@@ -27,7 +27,6 @@ on:
   push:
     branches: 
       - main
-      - feature/docker-deploy
 
 name: Deploy to Amazon ECS
 
@@ -55,7 +54,7 @@ jobs:
       id: build-image
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        ECR_REPOSITORY: repo-for-ecs-tutorial
+        ECR_REPOSITORY: project-sgn-prod-ecr-nginx
         IMAGE_TAG: ${{ github.sha }}
       run: |
         # Build a docker container and
@@ -70,7 +69,7 @@ jobs:
       uses: aws-actions/amazon-ecs-render-task-definition@v1
       with:
         task-definition: task-definition.json
-        container-name: container-for-ecs-tutorial
+        container-name: app1
         image: ${{ steps.build-image.outputs.image }}
 
     - name: Deploy Amazon ECS task definition
@@ -78,6 +77,6 @@ jobs:
       with:
         # task-definition: task-definition.json
         task-definition: ${{ steps.task-def.outputs.task-definition }}
-        service: service-for-ecs-tutorial
-        cluster: cluster-for-ecs-tutorial
+        service: project-sgn-prod-svc-svc1
+        cluster: project-sgn-prod-ecs-clustername1
         wait-for-service-stability: true
