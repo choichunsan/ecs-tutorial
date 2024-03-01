@@ -80,4 +80,4 @@ jobs:
         service: project-sgn-prod-svc-svc1
         cluster: project-sgn-prod-ecs-clustername1
         wait-for-service-stability: true
-        codedeploy-application: ecstest
+#        codedeploy-application: ecstest
