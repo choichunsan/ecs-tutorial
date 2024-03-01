@@ -13,18 +13,18 @@
           "protocol": "tcp"
         }
       ],
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "echo hello"
+        ],
+        "interval": 5,
+        "timeout": 2,
+        "retries": 3
+      },
       "essential": true
     }
   ],
-  "healthCheck": {
-    "command": [
-      "CMD-SHELL",
-      "echo hello"
-    ],
-    "interval": 5,
-    "timeout": 2,
-    "retries": 3
-  },
   "requiresCompatibilities": [
     "EC2"
   ],
