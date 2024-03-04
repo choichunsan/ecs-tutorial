@@ -1,9 +1,11 @@
 {
-  "taskDefinitionArn": "arn:aws:ecs:ap-northeast-2:588483912375:task-definition/project-sgn-prod-family-app1:20",
+  "family": "task-def-for-ecs-tutorial",
+  "executionRoleArn": "arn:aws:iam::414207599053:role/ecsTaskExecution",
+  "networkMode": "bridge",
   "containerDefinitions": [
     {
-      "name": "app1",
-      "image": "588483912375.dkr.ecr.ap-northeast-2.amazonaws.com/project-sgn-prod-ecr-nginx:b9a2dd68ec03ad8048781b4252b7b2ad88b13884",
+      "name": "project-sgn-prod-ecr-nginx",
+      "image": "588483912375.dkr.ecr.ap-northeast-2.amazonaws.com/project-sgn-prod-ecr-nginx:latest",
       "portMappings": [
         {
           "containerPort": 8080,
@@ -11,53 +13,12 @@
           "protocol": "tcp"
         }
       ],
-      "essential": true,
-      "environment": [],
-      "mountPoints": [],
-      "volumesFrom": [],
-      "healthCheck": {
-        "command": [
-          "CMD-SHELL",
-          "echo hello"
-        ],
-        "interval": 5,
-        "timeout": 2,
-        "retries": 3
-      },
-      "systemControls": []
+      "essential": true
     }
-  ],
-  "family": "project-sgn-prod-family-app1",
-  "executionRoleArn": "arn:aws:iam::588483912375:role/project-sgn-prod-role-ecsTaskExec",
-  "networkMode": "bridge",
-  "revision": 20,
-  "volumes": [],
-  "status": "ACTIVE",
-  "requiresAttributes": [
-    {
-      "name": "com.amazonaws.ecs.capability.docker-remote-api.1.24"
-    },
-    {
-      "name": "com.amazonaws.ecs.capability.ecr-auth"
-    },
-    {
-      "name": "ecs.capability.container-health-check"
-    },
-    {
-      "name": "ecs.capability.execution-role-ecr-pull"
-    }
-  ],
-  "placementConstraints": [],
-  "compatibilities": [
-    "EXTERNAL",
-    "EC2"
   ],
   "requiresCompatibilities": [
-    "EC2"
+    "FARGATE"
   ],
-  "cpu": "256",
-  "memory": "512",
-  "registeredAt": "2024-03-04T05:00:35.657Z",
-  "registeredBy": "arn:aws:iam::588483912375:user/kaucuro",
-  "tags": []
+  "cpu": "512",
+  "memory": "1024"
 }
