@@ -1,4 +1,5 @@
 {
+  "taskDefinitionArn": "arn:aws:ecs:ap-northeast-2:588483912375:task-definition/project-sgn-prod-family-app1:20",
   "family": "project-sgn-prod-family-app1",
   "executionRoleArn": "arn:aws:iam::588483912375:role/project-sgn-prod-role-ecsTaskExec",
   "networkMode": "bridge",
