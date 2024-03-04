@@ -1,11 +1,11 @@
 {
-  "family": "task-def-for-ecs-tutorial",
-  "executionRoleArn": "arn:aws:iam::414207599053:role/ecsTaskExecution",
-  "networkMode": "bridge",
+  "taskDefinitionArn": "arn:aws:ecs:ap-northeast-2:588483912375:task-definition/project-sgn-prod-family-app1:23",
   "containerDefinitions": [
     {
-      "name": "project-sgn-prod-ecr-nginx",
+      "name": "app1",
       "image": "588483912375.dkr.ecr.ap-northeast-2.amazonaws.com/project-sgn-prod-ecr-nginx:latest",
+      "cpu": 256,
+      "memory": 512,
       "portMappings": [
         {
           "containerPort": 8080,
@@ -13,12 +13,108 @@
           "protocol": "tcp"
         }
       ],
-      "essential": true
+      "essential": true,
+      "environment": [
+        {
+          "name": "PORT",
+          "value": "8080"
+        }
+      ],
+      "mountPoints": [],
+      "volumesFrom": [],
+      "ulimits": [
+        {
+          "name": "nofile",
+          "softLimit": 65536,
+          "hardLimit": 65536
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "app1-prod-awslogs",
+          "awslogs-region": "ap-northeast-2",
+          "awslogs-stream-prefix": "app1-prod-svc"
+        }
+      },
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "echo hello"
+        ],
+        "interval": 5,
+        "timeout": 2,
+        "retries": 3
+      },
+      "systemControls": []
     }
   ],
-  "requiresCompatibilities": [
-    "FARGATE"
+  "family": "project-sgn-prod-family-app1",
+  "executionRoleArn": "arn:aws:iam::588483912375:role/project-sgn-prod-role-ecsTaskExec",
+  "networkMode": "bridge",
+  "revision": 23,
+  "volumes": [],
+  "status": "ACTIVE",
+  "requiresAttributes": [
+    {
+      "name": "com.amazonaws.ecs.capability.logging-driver.awslogs"
+    },
+    {
+      "name": "com.amazonaws.ecs.capability.docker-remote-api.1.24"
+    },
+    {
+      "name": "ecs.capability.execution-role-awslogs"
+    },
+    {
+      "name": "com.amazonaws.ecs.capability.ecr-auth"
+    },
+    {
+      "name": "com.amazonaws.ecs.capability.docker-remote-api.1.19"
+    },
+    {
+      "name": "ecs.capability.container-health-check"
+    },
+    {
+      "name": "ecs.capability.execution-role-ecr-pull"
+    },
+    {
+      "name": "com.amazonaws.ecs.capability.docker-remote-api.1.18"
+    }
   ],
-  "cpu": "512",
-  "memory": "1024"
+  "placementConstraints": [],
+  "compatibilities": [
+    "EXTERNAL",
+    "EC2"
+  ],
+  "requiresCompatibilities": [
+    "EC2"
+  ],
+  "registeredAt": "2024-03-04T06:38:05.149Z",
+  "registeredBy": "arn:aws:iam::588483912375:user/kaucuro",
+  "tags": [
+    {
+      "key": "owner",
+      "value": "project"
+    },
+    {
+      "key": "service_group",
+      "value": "sgn"
+    },
+    {
+      "key": "environment",
+      "value": "prod"
+    },
+    {
+      "key": "Create",
+      "value": "2024-03-04"
+    },
+    {
+      "key": "AppName",
+      "value": "app1"
+    },
+    {
+      "key": "Name",
+      "value": "project-sgn-prod-task-app1"
+    }
+  ]
 }
