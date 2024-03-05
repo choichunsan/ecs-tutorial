@@ -1,5 +1,4 @@
 {
-  "taskDefinitionArn": "arn:aws:ecs:ap-northeast-2:588483912375:task-definition/project-sgn-prod-family-app1:23",
   "containerDefinitions": [
     {
       "name": "app1",
