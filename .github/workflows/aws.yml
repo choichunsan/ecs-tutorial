@@ -65,6 +65,14 @@ jobs:
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG 
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
         echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+#        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+    - name: Download Task Definition Template
+      run: |
+        aws ecs describe-task-definition \
+          --task-definition project-sgn-prod-family-app1 \
+          --query taskDefinition \
+          > task-definition.json    
 
     - name: Fill in the new image ID in the Amazon ECS task definition
       id: task-def
