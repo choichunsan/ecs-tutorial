@@ -45,21 +45,23 @@ jobs:
           case $BRANCH in
             "dev")
               TARGET_ENV="dev"
-              ACCOUNT_ID= ${{ secrets.ACCOUNT_ID }}
+              ACCOUNT_ID= ${{ vars.ACCOUNT_ID }}
               ;;
             "qa"|"stg")
               TARGET_ENV="stg" 
-              ACCOUNT_ID=${{ secrets.ACCOUNT_ID }}
+              ACCOUNT_ID=${{ vars.ACCOUNT_ID }}
               ;;
             "main"|"prod")
               TARGET_ENV="prod"
-              ACCOUNT_ID=${{ secrets.ACCOUNT_ID }}
+              ACCOUNT_ID=${{ vars.ACCOUNT_ID }}
               ;;
             *)
               TARGET_ENV="dev"  # 기본값
-              ACCOUNT_ID=${{ secrets.ACCOUNT_ID }}
+              ACCOUNT_ID=${{ vars.ACCOUNT_ID }}
               ;;
           esac
+
+          echo "${ACCOUNT_ID}"
           
           # 환경별 리소스 네이밍
           CODEDEPLOY_APP="kfc-mapp-${TARGET_ENV}-deploy-external"
