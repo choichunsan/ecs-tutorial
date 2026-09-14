@@ -1,99 +1,347 @@
-# This workflow will build and push a new container image to Amazon ECR,
-# and then will deploy a new task definition to Amazon ECS, when a release is created
-#
-# To use this workflow, you will need to complete the following set-up steps:
-#
-# 1. Create an ECR repository to store your images.
-#    For example: `aws ecr create-repository --repository-name my-ecr-repo --region us-east-2`.
-#    Replace the value of `ECR_REPOSITORY` in the workflow below with your repository's name.
-#    Replace the value of `aws-region` in the workflow below with your repository's region.
-#
-# 2. Create an ECS task definition, an ECS cluster, and an ECS service.
-#    For example, follow the Getting Started guide on the ECS console:
-#      https://us-east-2.console.aws.amazon.com/ecs/home?region=us-east-2#/firstRun
-#    Replace the values for `service` and `cluster` in the workflow below with your service and cluster names.
-#
-# 3. Store your ECS task definition as a JSON file in your repository.
-#    The format should follow the output of `aws ecs register-task-definition --generate-cli-skeleton`.
-#    Replace the value of `task-definition` in the workflow below with your JSON file's name.
-#    Replace the value of `container-name` in the workflow below with the name of the container
-#    in the `containerDefinitions` section of the task definition.
-#
-# 4. Store an IAM user access key in GitHub Actions secrets named `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`.
-#    See the documentation for each action used below for the recommended IAM policies for this IAM user,
-#    and best practices on handling the access key credentials.
+name: EXTERNAL - CI/CD
 
 on:
   push:
-    branches: 
-      - main
+    branches: ['**']
+  workflow_dispatch:
 
-name: Deploy to Amazon ECS
+env:
+  AWS_REGION: ap-northeast-2
+  S3_BUCKET: kfc-mapp-shd-artifact
+  SERVICE_NAME: external
 
 jobs:
-  deploy:
-    name: Deploy
-    runs-on: ubuntu-latest
-
+  # ======================================================================
+  # Job 1: Build & Test
+  # ======================================================================
+  build:
+    name: 🔨 Build & Test
+    if: github.event_name != 'push' || github.event.created != true
+    timeout-minutes: 30
+    runs-on:
+      - ubuntu-latest
+      # - codebuild-kfc-mapp-shd-runner-external-${{ github.run_id }}-${{ github.run_attempt }}
+      # - buildspec-override:true
+    
+    outputs:
+      # should-deploy: ${{ steps.check-deploy.outputs.should-deploy }}
+      commit-sha: ${{ github.sha }}
+      branch-name: ${{ github.ref_name }}
+      target-env: ${{ steps.env-mapping.outputs.target-env }}
+      codedeploy-app: ${{ steps.env-mapping.outputs.codedeploy-app }}
+      codedeploy-group: ${{ steps.env-mapping.outputs.codedeploy-group }}
+      deploy-role-arn: ${{ steps.env-mapping.outputs.deploy-role-arn }}
+    
     steps:
-    - name: Checkout
-      uses: actions/checkout@v2
+      # - name: 📥 Checkout Code
+      #   uses: actions/checkout@v4
 
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v1
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ap-northeast-2
+      - name: 🎯 Environment Mapping
+        id: env-mapping
+        run: |
+          BRANCH="${{ github.ref_name }}"
+          
+          # 브랜치별 환경 매핑
+          case $BRANCH in
+            "dev")
+              TARGET_ENV="dev"
+              ACCOUNT_ID= ${{ secrets.ACCOUNT_ID }}
+              ;;
+            "qa"|"stg")
+              TARGET_ENV="stg" 
+              ACCOUNT_ID=${{ secrets.ACCOUNT_ID }}
+              ;;
+            "main"|"prod")
+              TARGET_ENV="prod"
+              ACCOUNT_ID=${{ secrets.ACCOUNT_ID }}
+              ;;
+            *)
+              TARGET_ENV="dev"  # 기본값
+              ACCOUNT_ID=${{ secrets.ACCOUNT_ID }}
+              ;;
+          esac
+          
+          # 환경별 리소스 네이밍
+          CODEDEPLOY_APP="kfc-mapp-${TARGET_ENV}-deploy-external"
+          CODEDEPLOY_GROUP="kfc-mapp-${TARGET_ENV}-dg-external"
+          DEPLOY_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/kfc-mapp-${TARGET_ENV}-role-cross-deploy"
+          
+          # GitHub Actions 출력 설정
+          echo "target-env=${TARGET_ENV}" >> $GITHUB_OUTPUT
+          echo "codedeploy-app=${CODEDEPLOY_APP}" >> $GITHUB_OUTPUT
+          echo "codedeploy-group=${CODEDEPLOY_GROUP}" >> $GITHUB_OUTPUT
+          echo "deploy-role-arn=${DEPLOY_ROLE_ARN}" >> $GITHUB_OUTPUT
+          
+          echo "=========================================="
+          echo "  ENVIRONMENT MAPPING RESULT"
+          echo "  Source Branch: ${BRANCH}"
+          echo "  Target Environment: ${TARGET_ENV}"
+          echo "  CodeDeploy App: ${CODEDEPLOY_APP}"
+          echo "  CodeDeploy Group: ${CODEDEPLOY_GROUP}"
+          echo "  Deploy Role: ${DEPLOY_ROLE_ARN}"
+          echo "=========================================="
 
-    - name: Login to Amazon ECR
-      id: login-ecr
-      uses: aws-actions/amazon-ecr-login@v1
+      - name: ℹ️ Build Information
+        run: |
+          echo "=========================================="
+          echo "  EXTERNAL CI/CD - BUILD STAGE"
+          echo "  Branch: ${{ github.ref_name }}"
+          echo "  Target Environment: ${{ steps.env-mapping.outputs.target-env }}"
+          echo "  Commit: ${{ github.sha }}"
+          echo "  Event: ${{ github.event_name }}"
+          echo "=========================================="
 
-    - name: Build, tag, and push image to Amazon ECR
-      id: build-image
-      env:
-        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        ECR_REPOSITORY: project-sgn-prod-ecr-nginx
-        IMAGE_TAG: ${{ github.sha }}
-      run: |
-        # Build a docker container and
-        # push it to ECR so that it can
-        # be deployed to ECS.
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-        docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG 
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
-        echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
-#        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+  #     - name: 🐍 Setup Python Environment
+  #       run: |
+  #         python --version
+  #         pip install --upgrade pip setuptools wheel
+  #         pip install -r requirements.txt
+  #         echo "✅ Dependencies installed"
 
+  #     - name: ✅ Build & Verify
+  #       run: |
+  #         python manage.py check || echo "⚠️ Django check skipped"
+  #         echo "✅ Build passed"
 
-    - name: Download Task Definition Template
-      run: |
-        aws ecs describe-task-definition \
-          --task-definition project-sgn-prod-family-app1 \
-          --query taskDefinition \
-          > task-definition.json    
+  #     - name: 🎯 Check Deploy Condition
+  #       id: check-deploy
+  #       run: |
+  #         if [[ "${{ github.ref_name }}" == "dev" || "${{ github.ref_name }}" == "qa" || "${{ github.ref_name }}" == "stg" || "${{ github.ref_name }}" == "main" || "${{ github.ref_name }}" == "prod" || "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+  #           echo "should-deploy=true" >> $GITHUB_OUTPUT
+  #           echo "✅ Deploy condition met (target: ${{ steps.env-mapping.outputs.target-env }})"
+  #         else
+  #           echo "should-deploy=false" >> $GITHUB_OUTPUT
+  #           echo "⏭️ Deploy skipped (branch: ${{ github.ref_name }})"
+  #         fi
 
-    - name: Fill in the new image ID in the Amazon ECS task definition
-      id: task-def
-      uses: aws-actions/amazon-ecs-render-task-definition@v1
-      with:
-        task-definition: task-definition.json
-        container-name: app1
-        image: ${{ steps.build-image.outputs.image }}
+  #     - name: 📦 Package for CodeDeploy
+  #       if: steps.check-deploy.outputs.should-deploy == 'true'
+  #       run: |
+  #         mkdir -p artifact/scripts
+  #         rsync -a --exclude='.git' --exclude='.venv' --exclude='__pycache__' --exclude='artifact' . artifact/
+          
+  #         # 브랜치별 스크립트 덮어쓰기
+  #         BRANCH="${{ github.ref_name }}"
+  #         echo "🔄 Processing branch-specific script for: ${BRANCH}"
+          
+  #         case $BRANCH in
+  #           "dev")
+  #             if [ -f scripts/after_dev_install.sh ]; then
+  #               cp scripts/after_dev_install.sh artifact/scripts/after_install.sh
+  #               echo "✅ Copied scripts/after_dev_install.sh → artifact/scripts/after_install.sh"
+  #             else
+  #               echo "⚠️  Warning: scripts/after_dev_install.sh not found"
+  #             fi
+  #             ;;
+  #           "qa"|"stg")
+  #             if [ -f scripts/after_stg_install.sh ]; then
+  #               cp scripts/after_stg_install.sh artifact/scripts/after_install.sh
+  #               echo "✅ Copied scripts/after_stg_install.sh → artifact/scripts/after_install.sh"
+  #             else
+  #               echo "⚠️  Warning: scripts/after_stg_install.sh not found"
+  #             fi
+  #             ;;
+  #           "main"|"prod")
+  #             if [ -f scripts/after_prd_install.sh ]; then
+  #               cp scripts/after_prd_install.sh artifact/scripts/after_install.sh
+  #               echo "✅ Copied scripts/after_prd_install.sh → artifact/scripts/after_install.sh"
+  #             else
+  #               echo "⚠️  Warning: scripts/after_prd_install.sh not found"
+  #             fi
+  #             ;;
+  #           *)
+  #             echo "⏭️  No specific script for branch: ${BRANCH}, using default after_install.sh"
+  #             ;;
+  #         esac
+          
+  #         # Validate required files
+  #         if [ ! -f artifact/appspec.yml ]; then
+  #           echo "❌ appspec.yml missing"; exit 1
+  #         fi
+          
+  #         # Set script permissions
+  #         chmod +x artifact/scripts/*.sh 2>/dev/null || true
+          
+  #         # 덮어쓰기된 스크립트 내용 검증
+  #         if [ -f artifact/scripts/after_install.sh ]; then
+  #           echo "📝 Final after_install.sh content preview:"
+  #           head -10 artifact/scripts/after_install.sh || true
+  #         fi
+          
+  #         # Create artifact
+  #         cd artifact && zip -r ../artifact.zip . && cd ..
+  #         echo "✅ Artifact packaged ($(du -sh artifact.zip | cut -f1))"
 
-    - name: Deploy Amazon ECS task definition
-      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
-      with:
-        # task-definition: task-definition.json
-        task-definition: ${{ steps.task-def.outputs.task-definition }}
-        service: project-sgn-prod-svc-svc1
-        cluster: project-sgn-prod-ecs-clustername1
-        wait-for-service-stability: true
-        # blue/green codedeploy
-        #codedeploy-appspec: appspec.json
-        #codedeploy-application: test-code-deploy-application
-        #codedeploy-deployment-group: test-code-deploy-deployment-group
+  #     - name: 💾 Upload Artifact
+  #       if: steps.check-deploy.outputs.should-deploy == 'true'
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: external-artifact-${{ github.sha }}
+  #         path: artifact.zip
+  #         retention-days: 7
 
+  # # ======================================================================
+  # # Job 2: Upload to S3
+  # # ======================================================================
+  # upload:
+  #   name: ☁️ Upload to S3
+  #   needs: build
+  #   if: needs.build.outputs.should-deploy == 'true'
+  #   timeout-minutes: 10
+  #   runs-on: ubuntu-latest
+    
+  #   outputs:
+  #     s3-key: ${{ steps.upload-s3.outputs.s3-key }}
+  #     s3-url: ${{ steps.upload-s3.outputs.s3-url }}
+    
+  #   steps:
+  #     - name: ℹ️ Upload Information
+  #       run: |
+  #         echo "=========================================="
+  #         echo "  EXTERNAL CI/CD - UPLOAD STAGE"
+  #         echo "  Branch: ${{ needs.build.outputs.branch-name }}"
+  #         echo "  Target Environment: ${{ needs.build.outputs.target-env }}"
+  #         echo "  Commit: ${{ needs.build.outputs.commit-sha }}"
+  #         echo "  S3 Bucket: ${{ env.S3_BUCKET }}"
+  #         echo "=========================================="
 
+  #     - name: 📥 Download Artifact
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: external-artifact-${{ needs.build.outputs.commit-sha }}
+
+  #     - name: 🔑 Configure AWS Credentials
+  #       uses: aws-actions/configure-aws-credentials@v4
+  #       with:
+  #         aws-region: ${{ env.AWS_REGION }}
+
+  #     - name: ☁️ Upload to S3
+  #       id: upload-s3
+  #       run: |
+  #         TARGET_ENV="${{ needs.build.outputs.target-env }}"
+  #         S3_KEY="${{ env.SERVICE_NAME }}/${TARGET_ENV}/${{ needs.build.outputs.commit-sha }}.zip"
+  #         S3_URL="s3://${{ env.S3_BUCKET }}/${S3_KEY}"
+          
+  #         aws s3 cp artifact.zip "$S3_URL"
+          
+  #         # Verify upload
+  #         aws s3 ls "$S3_URL" || exit 1
+          
+  #         echo "s3-key=${S3_KEY}" >> $GITHUB_OUTPUT
+  #         echo "s3-url=${S3_URL}" >> $GITHUB_OUTPUT
+  #         echo "✅ Uploaded to ${S3_URL}"
+
+  # # ======================================================================
+  # # Job 3: Deploy via CodeDeploy
+  # # ======================================================================
+  # deploy:
+  #   name: 🚀 Deploy to EC2
+  #   needs: [build, upload]
+  #   if: needs.build.outputs.should-deploy == 'true'
+  #   timeout-minutes: 30
+  #   runs-on: ubuntu-latest
+    
+  #   steps:
+  #     - name: ℹ️ Deploy Information
+  #       run: |
+  #         echo "=========================================="
+  #         echo "  EXTERNAL CI/CD - DEPLOY STAGE"
+  #         echo "  Branch: ${{ needs.build.outputs.branch-name }}"
+  #         echo "  Target Environment: ${{ needs.build.outputs.target-env }}"
+  #         echo "  Commit: ${{ needs.build.outputs.commit-sha }}"
+  #         echo "  S3 Location: ${{ needs.upload.outputs.s3-url }}"
+  #         echo "  CodeDeploy App: ${{ needs.build.outputs.codedeploy-app }}"
+  #         echo "  CodeDeploy Group: ${{ needs.build.outputs.codedeploy-group }}"
+  #         echo "  Deploy Role: ${{ needs.build.outputs.deploy-role-arn }}"
+  #         echo "=========================================="
+
+  #     - name: 🔑 Configure AWS Credentials
+  #       uses: aws-actions/configure-aws-credentials@v4
+  #       with:
+  #         aws-region: ${{ env.AWS_REGION }}
+
+  #     - name: 🔄 Assume Deploy Role
+  #       run: |
+  #         echo "🔄 Assuming role: ${{ needs.build.outputs.deploy-role-arn }}"
+          
+  #         CREDS=$(aws sts assume-role \
+  #           --role-arn ${{ needs.build.outputs.deploy-role-arn }} \
+  #           --role-session-name github-deploy-${{ github.run_id }} \
+  #           --query 'Credentials' --output json)
+          
+  #         echo "AWS_ACCESS_KEY_ID=$(echo $CREDS | jq -r .AccessKeyId)" >> $GITHUB_ENV
+  #         echo "AWS_SECRET_ACCESS_KEY=$(echo $CREDS | jq -r .SecretAccessKey)" >> $GITHUB_ENV
+  #         echo "AWS_SESSION_TOKEN=$(echo $CREDS | jq -r .SessionToken)" >> $GITHUB_ENV
+  #         echo "✅ Assumed ${{ needs.build.outputs.target-env }} deployment role"
+
+  #     - name: 🚀 Deploy via CodeDeploy
+  #       run: |
+  #         echo "🚀 Starting CodeDeploy deployment..."
+          
+  #         DEPLOYMENT_ID=$(aws deploy create-deployment \
+  #           --application-name ${{ needs.build.outputs.codedeploy-app }} \
+  #           --deployment-group-name ${{ needs.build.outputs.codedeploy-group }} \
+  #           --s3-location bucket=${{ env.S3_BUCKET }},key=${{ needs.upload.outputs.s3-key }},bundleType=zip \
+  #           --region ${{ env.AWS_REGION }} \
+  #           --query 'deploymentId' --output text)
+          
+  #         echo "✅ Deployment started: $DEPLOYMENT_ID"
+  #         echo "🔗 Console: https://console.aws.amazon.com/codesuite/codedeploy/deployments/$DEPLOYMENT_ID"
+
+  #     - name: ⏳ Wait for Deployment
+  #       run: |
+  #         echo "⏳ Waiting for deployment to complete..."
+          
+  #         aws deploy wait deployment-successful \
+  #           --deployment-id $DEPLOYMENT_ID \
+  #           --region ${{ env.AWS_REGION }} || true
+          
+  #         STATUS=$(aws deploy get-deployment \
+  #           --deployment-id $DEPLOYMENT_ID \
+  #           --region ${{ env.AWS_REGION }} \
+  #           --query 'deploymentInfo.status' --output text)
+          
+  #         echo "📊 Final deployment status: $STATUS"
+          
+  #         case $STATUS in
+  #           "Succeeded")
+  #             echo "🎉 Deployment successful!"
+  #             ;;
+  #           "Failed")
+  #             echo "❌ Deployment failed!"
+  #             exit 1
+  #             ;;
+  #           "Stopped")
+  #             echo "⏹️ Deployment stopped!"
+  #             exit 1
+  #             ;;
+  #           *)
+  #             echo "⚠️ Unexpected status: $STATUS"
+  #             exit 1
+  #             ;;
+  #         esac
+
+  # # ======================================================================
+  # # Job 4: Summary (Optional)
+  # # ======================================================================
+  # summary:
+  #   name: 📋 Deployment Summary
+  #   needs: [build, upload, deploy]
+  #   if: always() && needs.build.outputs.should-deploy == 'true'
+  #   runs-on: ubuntu-latest
+    
+  #   steps:
+  #     - name: 📋 Create Summary
+  #       run: |
+  #         echo "## 🎯 EXTERNAL Deployment Summary" >> $GITHUB_STEP_SUMMARY
+  #         echo "" >> $GITHUB_STEP_SUMMARY
+  #         echo "| Stage | Status | Details |" >> $GITHUB_STEP_SUMMARY
+  #         echo "|-------|--------|---------|" >> $GITHUB_STEP_SUMMARY
+  #         echo "| 🔨 Build | ${{ needs.build.result }} | Branch: \`${{ needs.build.outputs.branch-name }}\` → Environment: \`${{ needs.build.outputs.target-env }}\` |" >> $GITHUB_STEP_SUMMARY
+  #         echo "| ☁️ Upload | ${{ needs.upload.result }} | S3: \`${{ needs.upload.outputs.s3-url }}\` |" >> $GITHUB_STEP_SUMMARY
+  #         echo "| 🚀 Deploy | ${{ needs.deploy.result }} | App: \`${{ needs.build.outputs.codedeploy-app }}\` |" >> $GITHUB_STEP_SUMMARY
+  #         echo "" >> $GITHUB_STEP_SUMMARY
+  #         echo "**Target Environment**: \`${{ needs.build.outputs.target-env }}\`" >> $GITHUB_STEP_SUMMARY
+  #         echo "**Commit**: \`${{ needs.build.outputs.commit-sha }}\`" >> $GITHUB_STEP_SUMMARY
+  #         echo "**CodeDeploy Group**: \`${{ needs.build.outputs.codedeploy-group }}\`" >> $GITHUB_STEP_SUMMARY
+  #         echo "**Workflow**: [\#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
