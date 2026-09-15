@@ -18,7 +18,7 @@ jobs:
     name: 🔨 Build & Test
     if: github.event_name != 'push' || github.event.created != true
     timeout-minutes: 30
-    environment: ${{ github.ref_name == 'dev'}}
+    environment: ${{ github.ref_name }}
     runs-on:
       - ubuntu-latest
       # - codebuild-kfc-mapp-shd-runner-external-${{ github.run_id }}-${{ github.run_attempt }}
