@@ -70,6 +70,7 @@ jobs:
           
           # GitHub Actions 출력 설정
           echo "target-env=${TARGET_ENV}" >> $GITHUB_OUTPUT
+          echo "account-id=${ACCOUNT_ID}" >> $GITHUB_OUTPUT
           echo "codedeploy-app=${CODEDEPLOY_APP}" >> $GITHUB_OUTPUT
           echo "codedeploy-group=${CODEDEPLOY_GROUP}" >> $GITHUB_OUTPUT
           echo "deploy-role-arn=${DEPLOY_ROLE_ARN}" >> $GITHUB_OUTPUT
