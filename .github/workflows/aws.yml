@@ -47,19 +47,19 @@ jobs:
           case $BRANCH in
             "dev")
               TARGET_ENV="dev"
-              ACCOUNT_ID="${{ vars.DEV_ACCOUNT_ID }}"
+              ACCOUNT_ID="${{ vars.ACCOUNT_ID }}"
               ;;
             "qa"|"stg")
               TARGET_ENV="stg"
-              ACCOUNT_ID="${{ vars.STG_ACCOUNT_ID }}"
+              ACCOUNT_ID="${{ vars.ACCOUNT_ID }}"
               ;;
             "main"|"prod")
               TARGET_ENV="prd"
-              ACCOUNT_ID="${{ vars.PRD_ACCOUNT_ID }}"
+              ACCOUNT_ID="${{ vars.ACCOUNT_ID }}"
               ;;
             *)
               TARGET_ENV="dev"  # 기본값
-              ACCOUNT_ID="${{ vars.DEV_ACCOUNT_ID }}"
+              ACCOUNT_ID="${{ vars.ACCOUNT_ID }}"
               echo "⚠️  Unknown branch '${BRANCH}', defaulting to dev environment"
               ;;
           esac
