@@ -22,7 +22,8 @@ jobs:
       - ubuntu-latest
       # - codebuild-kfc-mapp-shd-runner-external-${{ github.run_id }}-${{ github.run_attempt }}
       # - buildspec-override:true
-    
+    env:
+      ACCOUNT_ID: ${{ vars.ACCOUNT_ID }}
     outputs:
       # should-deploy: ${{ steps.check-deploy.outputs.should-deploy }}
       commit-sha: ${{ github.sha }}
