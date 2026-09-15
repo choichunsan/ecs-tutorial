@@ -40,12 +40,13 @@ jobs:
         id: env-mapping
         run: |
           BRANCH="${{ github.ref_name }}"
+          echo "현재 API URL: ${{ vars.ACCOUNT_ID }}"
           
           # 브랜치별 환경 매핑
           case $BRANCH in
             "dev")
               TARGET_ENV="dev"
-              ACCOUNT_ID= ${{ vars.ACCOUNT_ID }}
+              ACCOUNT_ID=${{ vars.ACCOUNT_ID }}
               ;;
             "qa"|"stg")
               TARGET_ENV="stg" 
