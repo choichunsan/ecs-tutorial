@@ -47,20 +47,32 @@ jobs:
           case $BRANCH in
             "dev")
               TARGET_ENV="dev"
-              ACCOUNT_ID="${{ vars.ACCOUNT_ID }}"
               ;;
             "qa"|"stg")
-              TARGET_ENV="stg"
-              ACCOUNT_ID="${{ vars.ACCOUNT_ID }}"
+              TARGET_ENV="stg" 
               ;;
             "main"|"prod")
               TARGET_ENV="prd"
-              ACCOUNT_ID="${{ vars.ACCOUNT_ID }}"
               ;;
             *)
               TARGET_ENV="dev"  # 기본값
-              ACCOUNT_ID="${{ vars.ACCOUNT_ID }}"
-              echo "⚠️  Unknown branch '${BRANCH}', defaulting to dev environment"
+              ;;
+          esac
+          
+          # GitHub Environment Variable에서 ACCOUNT_ID 가져오기
+          # GitHub Settings > Environments > [환경명] > Environment Variables에서 설정
+          case $TARGET_ENV in
+            "dev")
+              ACCOUNT_ID="${{ vars.DEV_ACCOUNT_ID }}"
+              ;;
+            "stg")
+              ACCOUNT_ID="${{ vars.STG_ACCOUNT_ID }}"
+              ;;
+            "prod")
+              ACCOUNT_ID="${{ vars.PROD_ACCOUNT_ID }}"
+              ;;
+            *)
+              ACCOUNT_ID="${{ vars.DEV_ACCOUNT_ID }}"  # 기본값
               ;;
           esac
           
