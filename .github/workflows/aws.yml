@@ -28,6 +28,7 @@ jobs:
       commit-sha: ${{ github.sha }}
       branch-name: ${{ github.ref_name }}
       target-env: ${{ steps.env-mapping.outputs.target-env }}
+      account-id: ${{ steps.env-mapping.outputs.account-id }}
       codedeploy-app: ${{ steps.env-mapping.outputs.codedeploy-app }}
       codedeploy-group: ${{ steps.env-mapping.outputs.codedeploy-group }}
       deploy-role-arn: ${{ steps.env-mapping.outputs.deploy-role-arn }}
