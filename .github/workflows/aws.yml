@@ -45,19 +45,19 @@ jobs:
           case $BRANCH in
             "dev")
               TARGET_ENV="dev"
-              echo "ACCOUNT_ID= ${{ vars.ACCOUNT_ID }}"
+              ACCOUNT_ID= ${{ vars.ACCOUNT_ID }}
               ;;
             "qa"|"stg")
               TARGET_ENV="stg" 
-              echo "ACCOUNT_ID=${{ vars.ACCOUNT_ID }}"
+              ACCOUNT_ID=${{ vars.ACCOUNT_ID }}
               ;;
             "main"|"prod")
               TARGET_ENV="prod"
-              echo "ACCOUNT_ID=${{ vars.ACCOUNT_ID }}"
+              ACCOUNT_ID=${{ vars.ACCOUNT_ID }}
               ;;
             *)
               TARGET_ENV="dev"  # 기본값
-              echo "ACCOUNT_ID=${{ vars.ACCOUNT_ID }}"
+              ACCOUNT_ID=${{ vars.ACCOUNT_ID }}
               ;;
           esac
           
