@@ -79,6 +79,7 @@ jobs:
           echo "  CodeDeploy App: ${CODEDEPLOY_APP}"
           echo "  CodeDeploy Group: ${CODEDEPLOY_GROUP}"
           echo "  Deploy Role: ${DEPLOY_ROLE_ARN}"
+          echo "  ACCOUNT_ID: ${ACCOUNT_ID}
           echo "=========================================="
 
       - name: ℹ️ Build Information
